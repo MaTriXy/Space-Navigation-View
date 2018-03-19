@@ -18,11 +18,9 @@ package com.luseen.spacenavigation;
 
 import java.io.Serializable;
 
-/**
- * Created by Chatikyan on 17.08.2016-18:07.
- */
+class BadgeItem implements Serializable {
 
-class BadgeItem implements Serializable{
+    private static final int BADGE_TEXT_MAX_NUMBER = 9;
 
     private int badgeIndex;
 
@@ -44,16 +42,22 @@ class BadgeItem implements Serializable{
         return badgeColor;
     }
 
-    int getIntBadgeText(){
+    int getIntBadgeText() {
         return badgeText;
+    }
+
+    String getFullBadgeText() {
+        return String.valueOf(badgeText);
     }
 
     String getBadgeText() {
         String badgeStringText;
-        if (badgeText > 9)
-            badgeStringText = 9 + "+";
-        else
+        if (badgeText > BADGE_TEXT_MAX_NUMBER) {
+            badgeStringText = BADGE_TEXT_MAX_NUMBER + "+";
+        } else {
             badgeStringText = String.valueOf(badgeText);
+        }
+
         return badgeStringText;
     }
 }

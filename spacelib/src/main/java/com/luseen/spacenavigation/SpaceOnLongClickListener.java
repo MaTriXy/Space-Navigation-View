@@ -16,26 +16,9 @@
  */
 package com.luseen.spacenavigation;
 
-import android.support.v4.view.ViewPropertyAnimatorListener;
-import android.view.View;
+public interface SpaceOnLongClickListener {
 
-/**
- * Created by Chatikyan on 16.08.2016-22:45.
- */
+    void onCentreButtonLongClick();
 
-class SimpleViewAnimatorListener implements ViewPropertyAnimatorListener {
-    @Override
-    public void onAnimationStart(View view) {
-
-    }
-
-    @Override
-    public void onAnimationEnd(View view) {
-
-    }
-
-    @Override
-    public void onAnimationCancel(View view) {
-
-    }
+    void onItemLongClick(int itemIndex, String itemName);
 }

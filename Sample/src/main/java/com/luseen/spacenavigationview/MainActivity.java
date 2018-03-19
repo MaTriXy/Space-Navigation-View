@@ -6,10 +6,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.luseen.spacenavigation.SpaceItem;
 import com.luseen.spacenavigation.SpaceNavigationView;
 import com.luseen.spacenavigation.SpaceOnClickListener;
+import com.luseen.spacenavigation.SpaceOnLongClickListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,33 +21,59 @@ public class MainActivity extends AppCompatActivity {
 
     private SpaceNavigationView spaceNavigationView;
 
-    private RecyclerView recyclerView;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
         spaceNavigationView = (SpaceNavigationView) findViewById(R.id.space);
         spaceNavigationView.initWithSaveInstanceState(savedInstanceState);
-        spaceNavigationView.addSpaceItem(new SpaceItem("HOME", R.drawable.home));
-        //spaceNavigationView.addSpaceItem(new SpaceItem("SEARCH", R.drawable.magnify));
-        //spaceNavigationView.addSpaceItem(new SpaceItem("LIKE", R.drawable.bell));
-        spaceNavigationView.addSpaceItem(new SpaceItem("ACCOUNT", R.drawable.account));
+        spaceNavigationView.addSpaceItem(new SpaceItem("HOME", R.drawable.account));
+        spaceNavigationView.addSpaceItem(new SpaceItem("SEARCH", R.drawable.magnify));
+        spaceNavigationView.shouldShowFullBadgeText(true);
+        spaceNavigationView.setCentreButtonIconColorFilterEnabled(false);
 
         spaceNavigationView.setSpaceOnClickListener(new SpaceOnClickListener() {
             @Override
             public void onCentreButtonClick() {
                 Log.d("onCentreButtonClick ", "onCentreButtonClick");
+                spaceNavigationView.shouldShowFullBadgeText(true);
             }
 
             @Override
             public void onItemClick(int itemIndex, String itemName) {
                 Log.d("onItemClick ", "" + itemIndex + " " + itemName);
             }
+
+            @Override
+            public void onItemReselected(int itemIndex, String itemName) {
+                Log.d("onItemReselected ", "" + itemIndex + " " + itemName);
+            }
         });
 
+        spaceNavigationView.setSpaceOnLongClickListener(new SpaceOnLongClickListener() {
+            @Override
+            public void onCentreButtonLongClick() {
+                Toast.makeText(MainActivity.this, "onCentreButtonLongClick", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onItemLongClick(int itemIndex, String itemName) {
+                Toast.makeText(MainActivity.this, itemIndex + " " + itemName, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        setUpRecyclerView();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        spaceNavigationView.onSaveInstanceState(outState);
+    }
+
+    private void setUpRecyclerView() {
+        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
         RecyclerAdapter adapter = new RecyclerAdapter(dummyStrings());
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
@@ -54,25 +82,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(int position) {
                 if (position == 0) {
-                    //spaceNavigationView.changeCurrentItem(3);
-                    spaceNavigationView.showBadgeAtIndex(1, 4, ContextCompat.getColor(MainActivity.this, R.color.badge_background_color));
-                    //spaceNavigationView.showBadgeAtIndex(2, 4, ContextCompat.getColor(MainActivity.this, R.color.badge_background_color));
-                    //spaceNavigationView.showBadgeAtIndex(2, 7, ContextCompat.getColor(MainActivity.this, android.R.color.holo_blue_light));
-                    //spaceNavigationView.showBadgeAtIndex(3, 3, ContextCompat.getColor(MainActivity.this, android.R.color.holo_red_dark));
-
+                    spaceNavigationView.showBadgeAtIndex(1, 54, ContextCompat.getColor(MainActivity.this, R.color.badge_background_color));
                 } else if (position == 1) {
-                    //spaceNavigationView.changeCurrentItem(3);
                     spaceNavigationView.hideBudgeAtIndex(1);
                 }
             }
         });
-
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        spaceNavigationView.onSaveInstanceState(outState);
     }
 
     private List<String> dummyStrings() {

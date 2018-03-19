@@ -20,7 +20,9 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.PorterDuff;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
 import android.support.design.widget.FloatingActionButton;
@@ -40,44 +42,49 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-/**
- * Created by Chatikyan on 10.08.2016-11:38.
- */
-
 public class SpaceNavigationView extends RelativeLayout {
-
-    private static final int NOT_DEFINED = -777;
 
     private static final String TAG = "SpaceNavigationView";
 
     private static final String CURRENT_SELECTED_ITEM_BUNDLE_KEY = "currentItem";
 
-    private static final String BUDGES_ITEM_BUNDLE_KEY = "budgeItem";
+    private static final String BADGES_ITEM_BUNDLE_KEY = "badgeItem";
 
-    private List<SpaceItem> spaceItems = new ArrayList<>();
+    private static final String CHANGED_ICON_AND_TEXT_BUNDLE_KEY = "changedIconAndText";
 
-    private List<View> spaceItemList = new ArrayList<>();
+    private static final String CENTRE_BUTTON_ICON_KEY = "centreButtonIconKey";
 
-    private List<RelativeLayout> badgeList = new ArrayList<>();
+    private static final String CENTRE_BUTTON_COLOR_KEY = "centreButtonColorKey";
 
-    private HashMap<Integer, Object> badgeSaveInstanceHashMap = new HashMap<>();
+    private static final String SPACE_BACKGROUND_COLOR_KEY = "backgroundColorKey";
 
-    private SpaceOnClickListener spaceOnClickListener;
+    private static final String BADGE_FULL_TEXT_KEY = "badgeFullTextKey";
 
-    private Bundle savedInstanceState;
+    private static final String VISIBILITY = "visibilty";
 
-    private Typeface customFont;
+    private static final int NOT_DEFINED = -777; //random number, not - 1 because it is Color.WHITE
 
-    private Context context;
+    private static final int MAX_SPACE_ITEM_SIZE = 4;
 
+    private static final int MIN_SPACE_ITEM_SIZE = 2;
     private final int spaceNavigationHeight = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.space_navigation_height);
-
-    private final int centreContentMargin = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.fab_margin);
-
     private final int mainContentHeight = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.main_content_height);
-
     private final int centreContentWight = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.centre_content_width);
-
+    private final int centreButtonSize = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.space_centre_button_default_size);
+    private List<SpaceItem> spaceItems = new ArrayList<>();
+    private List<View> spaceItemList = new ArrayList<>();
+    private List<RelativeLayout> badgeList = new ArrayList<>();
+    private HashMap<Integer, Object> badgeSaveInstanceHashMap = new HashMap<>();
+    private HashMap<Integer, SpaceItem> changedItemAndIconHashMap = new HashMap<>();
+    private SpaceOnClickListener spaceOnClickListener;
+    private SpaceOnLongClickListener spaceOnLongClickListener;
+    private Bundle savedInstanceState;
+    private CentreButton centreButton;
+    private RelativeLayout centreBackgroundView;
+    private LinearLayout leftContent, rightContent;
+    private BezierView centreContent;
+    private Typeface customFont;
+    private Context context;
     private int spaceItemIconSize = NOT_DEFINED;
 
     private int spaceItemIconOnlySize = NOT_DEFINED;
@@ -88,21 +95,37 @@ public class SpaceNavigationView extends RelativeLayout {
 
     private int centreButtonColor = NOT_DEFINED;
 
+    private int activeCentreButtonIconColor = NOT_DEFINED;
+
+    private int inActiveCentreButtonIconColor = NOT_DEFINED;
+
+    private int activeCentreButtonBackgroundColor = NOT_DEFINED;
+
     private int centreButtonIcon = NOT_DEFINED;
 
     private int activeSpaceItemColor = NOT_DEFINED;
 
     private int inActiveSpaceItemColor = NOT_DEFINED;
 
+    private int centreButtonRippleColor = NOT_DEFINED;
+
     private int currentSelectedItem = 0;
 
     private int contentWidth;
 
-    private boolean textOnly = false;
+    private boolean isCentreButtonSelectable = false;
 
-    private boolean iconOnly = false;
+    private boolean isCentrePartLinear = false;
+
+    private boolean isTextOnlyMode = false;
+
+    private boolean isIconOnlyMode = false;
 
     private boolean isCustomFont = false;
+
+    private boolean isCentreButtonIconColorFilterEnabled = true;
+
+    private boolean shouldShowBadgeWithNinePlus = true;
 
     /**
      * Constructors
@@ -135,10 +158,15 @@ public class SpaceNavigationView extends RelativeLayout {
             spaceItemIconOnlySize = typedArray.getDimensionPixelSize(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_space_item_icon_only_size, resources.getDimensionPixelSize(com.luseen.spacenavigation.R.dimen.space_item_icon_only_size));
             spaceItemTextSize = typedArray.getDimensionPixelSize(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_space_item_text_size, resources.getDimensionPixelSize(com.luseen.spacenavigation.R.dimen.space_item_text_default_size));
             spaceItemIconOnlySize = typedArray.getDimensionPixelSize(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_space_item_icon_only_size, resources.getDimensionPixelSize(com.luseen.spacenavigation.R.dimen.space_item_icon_only_size));
-            spaceBackgroundColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_space_background_color, resources.getColor(com.luseen.spacenavigation.R.color.default_color));
+            spaceBackgroundColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_space_background_color, resources.getColor(com.luseen.spacenavigation.R.color.space_default_color));
             centreButtonColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_centre_button_color, resources.getColor(com.luseen.spacenavigation.R.color.centre_button_color));
-            activeSpaceItemColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_active_item_color, resources.getColor(com.luseen.spacenavigation.R.color.white));
+            activeSpaceItemColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_active_item_color, resources.getColor(com.luseen.spacenavigation.R.color.space_white));
             inActiveSpaceItemColor = typedArray.getColor(com.luseen.spacenavigation.R.styleable.SpaceNavigationView_inactive_item_color, resources.getColor(com.luseen.spacenavigation.R.color.default_inactive_item_color));
+            centreButtonIcon = typedArray.getResourceId(R.styleable.SpaceNavigationView_centre_button_icon, R.drawable.near_me);
+            isCentrePartLinear = typedArray.getBoolean(R.styleable.SpaceNavigationView_centre_part_linear, false);
+            activeCentreButtonIconColor = typedArray.getColor(R.styleable.SpaceNavigationView_active_centre_button_icon_color, resources.getColor(R.color.space_white));
+            inActiveCentreButtonIconColor = typedArray.getColor(R.styleable.SpaceNavigationView_inactive_centre_button_icon_color, resources.getColor(com.luseen.spacenavigation.R.color.default_inactive_item_color));
+            activeCentreButtonBackgroundColor = typedArray.getColor(R.styleable.SpaceNavigationView_active_centre_button_background_color, resources.getColor(com.luseen.spacenavigation.R.color.centre_button_color));
 
             typedArray.recycle();
         }
@@ -152,7 +180,7 @@ public class SpaceNavigationView extends RelativeLayout {
          * Set default colors and sizes
          */
         if (spaceBackgroundColor == NOT_DEFINED)
-            spaceBackgroundColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.default_color);
+            spaceBackgroundColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.space_default_color);
 
         if (centreButtonColor == NOT_DEFINED)
             centreButtonColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.centre_button_color);
@@ -161,7 +189,7 @@ public class SpaceNavigationView extends RelativeLayout {
             centreButtonIcon = R.drawable.near_me;
 
         if (activeSpaceItemColor == NOT_DEFINED)
-            activeSpaceItemColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.white);
+            activeSpaceItemColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.space_white);
 
         if (inActiveSpaceItemColor == NOT_DEFINED)
             inActiveSpaceItemColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.default_inactive_item_color);
@@ -175,19 +203,28 @@ public class SpaceNavigationView extends RelativeLayout {
         if (spaceItemIconOnlySize == NOT_DEFINED)
             spaceItemIconOnlySize = (int) getResources().getDimension(com.luseen.spacenavigation.R.dimen.space_item_icon_only_size);
 
+        if (centreButtonRippleColor == NOT_DEFINED)
+            centreButtonRippleColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.colorBackgroundHighlightWhite);
+
+        if (activeCentreButtonIconColor == NOT_DEFINED)
+            activeCentreButtonIconColor = ContextCompat.getColor(context, R.color.space_white);
+
+        if (inActiveCentreButtonIconColor == NOT_DEFINED)
+            inActiveCentreButtonIconColor = ContextCompat.getColor(context, com.luseen.spacenavigation.R.color.default_inactive_item_color);
+
         /**
          * Set main layout size and color
          */
         ViewGroup.LayoutParams params = getLayoutParams();
         params.width = ViewGroup.LayoutParams.MATCH_PARENT;
         params.height = spaceNavigationHeight;
-        setBackgroundColor(ContextCompat.getColor(context, R.color.transparent));
+        setBackgroundColor(ContextCompat.getColor(context, R.color.space_transparent));
         setLayoutParams(params);
     }
 
     @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
+    protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
 
         /**
          * Restore current item index from savedInstance
@@ -197,12 +234,12 @@ public class SpaceNavigationView extends RelativeLayout {
         /**
          * Trow exceptions if items size is greater than 4 or lesser than 2
          */
-        if (spaceItems.size() < 2) {
+        if (spaceItems.size() < MIN_SPACE_ITEM_SIZE && !isInEditMode()) {
             throw new NullPointerException("Your space item count must be greater than 1 ," +
-                    " your current items count is : " + spaceItems.size());
+                    " your current items count isa : " + spaceItems.size());
         }
 
-        if (spaceItems.size() > 4) {
+        if (spaceItems.size() > MAX_SPACE_ITEM_SIZE && !isInEditMode()) {
             throw new IndexOutOfBoundsException("Your items count maximum can be 4," +
                     " your current items count is : " + spaceItems.size());
         }
@@ -210,7 +247,7 @@ public class SpaceNavigationView extends RelativeLayout {
         /**
          * Get left or right content width
          */
-        contentWidth = (w - spaceNavigationHeight) / 2;
+        contentWidth = (width - spaceNavigationHeight) / 2;
 
         /**
          * Removing all view for not being duplicated
@@ -220,32 +257,69 @@ public class SpaceNavigationView extends RelativeLayout {
         /**
          * Views initializations and customizing
          */
+        initAndAddViewsToMainView();
+
+        /**
+         * Redraw main view to make subviews visible
+         */
+        postRequestLayout();
+
+        /**
+         * Retore Translation height
+         */
+
+        restoreTranslation();
+    }
+
+    //private methods
+
+    /**
+     * Views initializations and customizing
+     */
+    private void initAndAddViewsToMainView() {
+
         RelativeLayout mainContent = new RelativeLayout(context);
-        RelativeLayout centreBackgroundView = new RelativeLayout(context);
+        centreBackgroundView = new RelativeLayout(context);
 
-        LinearLayout leftContent = new LinearLayout(context);
-        LinearLayout rightContent = new LinearLayout(context);
+        leftContent = new LinearLayout(context);
+        rightContent = new LinearLayout(context);
 
-        BezierView centreContent = buildBezierView();
+        centreContent = buildBezierView();
 
-        FloatingActionButton fab = new FloatingActionButton(context);
-        fab.setSize(FloatingActionButton.SIZE_NORMAL);
-        fab.setBackgroundTintList(ColorStateList.valueOf(centreButtonColor));
-        fab.setImageResource(centreButtonIcon);
-        fab.setOnClickListener(new OnClickListener() {
+        centreButton = new CentreButton(context);
+        centreButton.setSize(FloatingActionButton.SIZE_NORMAL);
+        centreButton.setUseCompatPadding(false);
+        centreButton.setRippleColor(centreButtonRippleColor);
+        centreButton.setBackgroundTintList(ColorStateList.valueOf(centreButtonColor));
+        centreButton.setImageResource(centreButtonIcon);
+
+        if (isCentreButtonIconColorFilterEnabled || isCentreButtonSelectable)
+            centreButton.getDrawable().setColorFilter(inActiveCentreButtonIconColor, PorterDuff.Mode.SRC_IN);
+
+        centreButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (spaceOnClickListener != null)
                     spaceOnClickListener.onCentreButtonClick();
+                if (isCentreButtonSelectable)
+                    updateSpaceItems(-1);
+            }
+        });
+        centreButton.setOnLongClickListener(new OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (spaceOnLongClickListener != null)
+                    spaceOnLongClickListener.onCentreButtonLongClick();
+
+                return true;
             }
         });
 
         /**
          * Set fab layout params
          */
-        LayoutParams fabParams = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        LayoutParams fabParams = new LayoutParams(centreButtonSize, centreButtonSize);
         fabParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-        fabParams.setMargins(centreContentMargin, centreContentMargin, centreContentMargin, centreContentMargin);
 
         /**
          * Main content size
@@ -258,6 +332,7 @@ public class SpaceNavigationView extends RelativeLayout {
          */
         LayoutParams centreContentParams = new LayoutParams(centreContentWight, spaceNavigationHeight);
         centreContentParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+        centreContentParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
 
         /**
          * Centre Background View content size and position
@@ -269,34 +344,35 @@ public class SpaceNavigationView extends RelativeLayout {
         /**
          * Left content size
          */
-        LayoutParams leftContentParams = new LayoutParams(contentWidth, ViewGroup.LayoutParams.MATCH_PARENT);
+        LayoutParams leftContentParams = new LayoutParams(contentWidth,mainContentHeight);
         leftContentParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
         leftContentParams.addRule(LinearLayout.HORIZONTAL);
+        leftContentParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
 
         /**
          * Right content size
          */
-        LayoutParams rightContentParams = new LayoutParams(contentWidth, ViewGroup.LayoutParams.MATCH_PARENT);
+        LayoutParams rightContentParams = new LayoutParams(contentWidth, mainContentHeight);
         rightContentParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
         rightContentParams.addRule(LinearLayout.HORIZONTAL);
+        rightContentParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
 
         /**
          * Adding views background colors
          */
-        leftContent.setBackgroundColor(spaceBackgroundColor);
-        rightContent.setBackgroundColor(spaceBackgroundColor);
-        centreBackgroundView.setBackgroundColor(spaceBackgroundColor);
+        setBackgroundColors();
 
         /**
          * Adding view to centreContent
          */
-        centreContent.addView(fab, fabParams);
+        centreContent.addView(centreButton, fabParams);
 
         /**
          * Adding views to mainContent
          */
-        mainContent.addView(leftContent, leftContentParams);
-        mainContent.addView(rightContent, rightContentParams);
+        addView(leftContent, leftContentParams);
+        addView(rightContent, rightContentParams);
+
 
         /**
          * Adding views to mainView
@@ -306,14 +382,14 @@ public class SpaceNavigationView extends RelativeLayout {
         addView(mainContent, mainContentParams);
 
         /**
+         * Restore changed icons and texts from savedInstance
+         */
+        restoreChangedIconsAndTexts();
+
+        /**
          * Adding current space items to left and right content
          */
         addSpaceItems(leftContent, rightContent);
-
-        /**
-         * Redraw main view to make subviews visible
-         */
-        Utils.postRequestLayout(this);
     }
 
     /**
@@ -346,10 +422,12 @@ public class SpaceNavigationView extends RelativeLayout {
         for (int i = 0; i < spaceItems.size(); i++) {
             final int index = i;
             int targetWidth;
-            if (spaceItems.size() > 2)
+
+            if (spaceItems.size() > MIN_SPACE_ITEM_SIZE) {
                 targetWidth = contentWidth / 2;
-            else
+            } else {
                 targetWidth = contentWidth;
+            }
 
             RelativeLayout.LayoutParams textAndIconContainerParams = new RelativeLayout.LayoutParams(
                     targetWidth, mainContentHeight);
@@ -372,14 +450,14 @@ public class SpaceNavigationView extends RelativeLayout {
             /**
              * Hide item icon and show only text
              */
-            if (textOnly)
+            if (isTextOnlyMode)
                 Utils.changeViewVisibilityGone(spaceItemIcon);
 
             /**
              * Hide item text and change icon size
              */
             ViewGroup.LayoutParams iconParams = spaceItemIcon.getLayoutParams();
-            if (iconOnly) {
+            if (isIconOnlyMode) {
                 iconParams.height = spaceItemIconOnlySize;
                 iconParams.width = spaceItemIconOnlySize;
                 spaceItemIcon.setLayoutParams(iconParams);
@@ -403,9 +481,9 @@ public class SpaceNavigationView extends RelativeLayout {
             /**
              * Adding sub views to left and right sides
              */
-            if (spaceItems.size() == 2 && leftContent.getChildCount() == 1) {
+            if (spaceItems.size() == MIN_SPACE_ITEM_SIZE && leftContent.getChildCount() == 1) {
                 rightContent.addView(textAndIconContainer, textAndIconContainerParams);
-            } else if (spaceItems.size() > 2 && leftContent.getChildCount() == 2) {
+            } else if (spaceItems.size() > MIN_SPACE_ITEM_SIZE && leftContent.getChildCount() == 2) {
                 rightContent.addView(textAndIconContainer, textAndIconContainerParams);
             } else {
                 leftContent.addView(textAndIconContainer, textAndIconContainerParams);
@@ -428,6 +506,15 @@ public class SpaceNavigationView extends RelativeLayout {
                     updateSpaceItems(index);
                 }
             });
+
+            textAndIconContainer.setOnLongClickListener(new OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    if (spaceOnLongClickListener != null)
+                        spaceOnLongClickListener.onItemLongClick(index, spaceItems.get(index).getItemName());
+                    return true;
+                }
+            });
         }
 
         /**
@@ -446,8 +533,40 @@ public class SpaceNavigationView extends RelativeLayout {
         /**
          * return if item already selected
          */
-        if (currentSelectedItem == selectedIndex)
+        if (currentSelectedItem == selectedIndex) {
+            if (spaceOnClickListener != null && selectedIndex >= 0)
+                spaceOnClickListener.onItemReselected(selectedIndex, spaceItems.get(selectedIndex).getItemName());
+
             return;
+        }
+
+        if (isCentreButtonSelectable) {
+            /**
+             * Selects the centre button as current
+             */
+            if (selectedIndex == -1) {
+                if (centreButton != null) {
+                    centreButton.getDrawable().setColorFilter(activeCentreButtonIconColor, PorterDuff.Mode.SRC_IN);
+
+                    if (activeCentreButtonBackgroundColor != NOT_DEFINED) {
+                        centreButton.setBackgroundTintList(ColorStateList.valueOf(activeCentreButtonBackgroundColor));
+                    }
+                }
+            }
+
+            /**
+             * Removes selection from centre button
+             */
+            if (currentSelectedItem == -1) {
+                if (centreButton != null) {
+                    centreButton.getDrawable().setColorFilter(inActiveCentreButtonIconColor, PorterDuff.Mode.SRC_IN);
+
+                    if (activeCentreButtonBackgroundColor != NOT_DEFINED) {
+                        centreButton.setBackgroundTintList(ColorStateList.valueOf(centreButtonColor));
+                    }
+                }
+            }
+        }
 
         /**
          * Change active and inactive icon and text color
@@ -473,13 +592,34 @@ public class SpaceNavigationView extends RelativeLayout {
          *
          * @param listener a listener for monitoring changes in item selection
          */
-        if (spaceOnClickListener != null)
+        if (spaceOnClickListener != null && selectedIndex >= 0)
             spaceOnClickListener.onItemClick(selectedIndex, spaceItems.get(selectedIndex).getItemName());
 
         /**
          * Change current selected item index
          */
         currentSelectedItem = selectedIndex;
+    }
+
+    /**
+     * Set views background colors
+     */
+    private void setBackgroundColors() {
+        rightContent.setBackgroundColor(spaceBackgroundColor);
+        centreBackgroundView.setBackgroundColor(spaceBackgroundColor);
+        leftContent.setBackgroundColor(spaceBackgroundColor);
+    }
+
+    /**
+     * Indicate event queue that we have changed the View hierarchy during a layout pass
+     */
+    private void postRequestLayout() {
+        SpaceNavigationView.this.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                SpaceNavigationView.this.requestLayout();
+            }
+        });
     }
 
     /**
@@ -499,16 +639,56 @@ public class SpaceNavigationView extends RelativeLayout {
     @SuppressWarnings("unchecked")
     private void restoreBadges() {
         Bundle restoredBundle = savedInstanceState;
-        if (restoredBundle != null && restoredBundle.containsKey(BUDGES_ITEM_BUNDLE_KEY)) {
-            badgeSaveInstanceHashMap = (HashMap<Integer, Object>) savedInstanceState.getSerializable(BUDGES_ITEM_BUNDLE_KEY);
-            if (badgeSaveInstanceHashMap != null) {
-                for (Integer integer : badgeSaveInstanceHashMap.keySet()) {
-                    BadgeHelper.forceShowBadge(badgeList.get(integer), (BadgeItem) badgeSaveInstanceHashMap.get(integer));
+
+        if (restoredBundle != null) {
+            if (restoredBundle.containsKey(BADGE_FULL_TEXT_KEY)) {
+                shouldShowBadgeWithNinePlus = restoredBundle.getBoolean(BADGE_FULL_TEXT_KEY);
+            }
+
+            if (restoredBundle.containsKey(BADGES_ITEM_BUNDLE_KEY)) {
+                badgeSaveInstanceHashMap = (HashMap<Integer, Object>) savedInstanceState.getSerializable(BADGES_ITEM_BUNDLE_KEY);
+                if (badgeSaveInstanceHashMap != null) {
+                    for (Integer integer : badgeSaveInstanceHashMap.keySet()) {
+                        BadgeHelper.forceShowBadge(
+                                badgeList.get(integer),
+                                (BadgeItem) badgeSaveInstanceHashMap.get(integer),
+                                shouldShowBadgeWithNinePlus);
+                    }
                 }
             }
         }
     }
 
+    /**
+     * Restore changed icons,colors and texts from saveInstance
+     */
+    @SuppressWarnings("unchecked")
+    private void restoreChangedIconsAndTexts() {
+        Bundle restoredBundle = savedInstanceState;
+        if (restoredBundle != null) {
+            if (restoredBundle.containsKey(CHANGED_ICON_AND_TEXT_BUNDLE_KEY)) {
+                changedItemAndIconHashMap = (HashMap<Integer, SpaceItem>) restoredBundle.getSerializable(CHANGED_ICON_AND_TEXT_BUNDLE_KEY);
+                if (changedItemAndIconHashMap != null) {
+                    SpaceItem spaceItem;
+                    for (int i = 0; i < changedItemAndIconHashMap.size(); i++) {
+                        spaceItem = changedItemAndIconHashMap.get(i);
+                        spaceItems.get(i).setItemIcon(spaceItem.getItemIcon());
+                        spaceItems.get(i).setItemName(spaceItem.getItemName());
+                    }
+                }
+            }
+
+            if (restoredBundle.containsKey(CENTRE_BUTTON_ICON_KEY)) {
+                centreButtonIcon = restoredBundle.getInt(CENTRE_BUTTON_ICON_KEY);
+                centreButton.setImageResource(centreButtonIcon);
+            }
+
+            if (restoredBundle.containsKey(SPACE_BACKGROUND_COLOR_KEY)) {
+                int backgroundColor = restoredBundle.getInt(SPACE_BACKGROUND_COLOR_KEY);
+                changeSpaceBackgroundColor(backgroundColor);
+            }
+        }
+    }
 
     /**
      * Creating bezier view with params
@@ -517,13 +697,25 @@ public class SpaceNavigationView extends RelativeLayout {
      */
     private BezierView buildBezierView() {
         BezierView bezierView = new BezierView(context, spaceBackgroundColor);
-        bezierView.build(centreContentWight, spaceNavigationHeight - mainContentHeight);
+        bezierView.build(centreContentWight, spaceNavigationHeight - mainContentHeight,isCentrePartLinear);
         return bezierView;
     }
 
     /**
+     * Throw Array Index Out Of Bounds Exception
+     *
+     * @param itemIndex item index to show on logs
+     */
+    private void throwArrayIndexOutOfBoundsException(int itemIndex) {
+        throw new ArrayIndexOutOfBoundsException("Your item index can't be 0 or greater than space item size," +
+                " your items size is " + spaceItems.size() + ", your current index is :" + itemIndex);
+    }
+
+    //public methods
+
+    /**
      * Initialization with savedInstanceState to save current selected
-     * position and current budges
+     * position and current badges
      *
      * @param savedInstanceState bundle to saveInstance
      */
@@ -532,13 +724,21 @@ public class SpaceNavigationView extends RelativeLayout {
     }
 
     /**
-     * Save budges and current position
+     * Save badges and current position
      *
      * @param outState bundle to saveInstance
      */
     public void onSaveInstanceState(Bundle outState) {
         outState.putInt(CURRENT_SELECTED_ITEM_BUNDLE_KEY, currentSelectedItem);
-        outState.putSerializable(BUDGES_ITEM_BUNDLE_KEY, badgeSaveInstanceHashMap);
+        outState.putInt(CENTRE_BUTTON_ICON_KEY, centreButtonIcon);
+        outState.putInt(SPACE_BACKGROUND_COLOR_KEY, spaceBackgroundColor);
+        outState.putBoolean(BADGE_FULL_TEXT_KEY, shouldShowBadgeWithNinePlus);
+        outState.putFloat(VISIBILITY, this.getTranslationY());
+
+        if (badgeSaveInstanceHashMap.size() > 0)
+            outState.putSerializable(BADGES_ITEM_BUNDLE_KEY, badgeSaveInstanceHashMap);
+        if (changedItemAndIconHashMap.size() > 0)
+            outState.putSerializable(CHANGED_ICON_AND_TEXT_BUNDLE_KEY, changedItemAndIconHashMap);
     }
 
     /**
@@ -566,6 +766,15 @@ public class SpaceNavigationView extends RelativeLayout {
      */
     public void setCentreButtonIcon(int centreButtonIcon) {
         this.centreButtonIcon = centreButtonIcon;
+    }
+
+    /**
+     * Set active centre button color
+     *
+     * @param activeCentreButtonBackgroundColor color to change
+     */
+    public void setActiveCentreButtonBackgroundColor(@ColorInt int activeCentreButtonBackgroundColor) {
+        this.activeCentreButtonBackgroundColor = activeCentreButtonBackgroundColor;
     }
 
     /**
@@ -614,17 +823,33 @@ public class SpaceNavigationView extends RelativeLayout {
     }
 
     /**
+     * Set centre button pressed state color
+     *
+     * @param centreButtonRippleColor Target color
+     */
+    public void setCentreButtonRippleColor(int centreButtonRippleColor) {
+        this.centreButtonRippleColor = centreButtonRippleColor;
+    }
+
+    /**
      * Show only text in item
      */
     public void showTextOnly() {
-        textOnly = true;
+        isTextOnlyMode = true;
     }
 
     /**
      * Show only icon in item
      */
     public void showIconOnly() {
-        iconOnly = true;
+        isIconOnlyMode = true;
+    }
+
+    /**
+     * Makes centre button selectable
+     */
+    public void setCentreButtonSelectable(boolean isSelectable) {
+        this.isCentreButtonSelectable = isSelectable;
     }
 
     /**
@@ -637,7 +862,17 @@ public class SpaceNavigationView extends RelativeLayout {
     }
 
     /**
-     * Set item and centre click
+     * Change current selected item to centre button
+     */
+    public void setCentreButtonSelected() {
+        if (!isCentreButtonSelectable)
+            throw new ArrayIndexOutOfBoundsException("Please be more careful, you must set the centre button selectable");
+        else
+            updateSpaceItems(-1);
+    }
+
+    /**
+     * Set space item and centre click
      *
      * @param spaceOnClickListener space click listener
      */
@@ -646,15 +881,26 @@ public class SpaceNavigationView extends RelativeLayout {
     }
 
     /**
+     * Set space item and centre button long click
+     *
+     * @param spaceOnLongClickListener space long click listener
+     */
+    public void setSpaceOnLongClickListener(SpaceOnLongClickListener spaceOnLongClickListener) {
+        this.spaceOnLongClickListener = spaceOnLongClickListener;
+    }
+
+    /**
      * Change current selected item to given index
+     * Note: -1 represents the centre button
      *
      * @param indexToChange given index
      */
     public void changeCurrentItem(int indexToChange) {
-        if (indexToChange < 0 || indexToChange > spaceItems.size())
+        if (indexToChange < -1 || indexToChange > spaceItems.size())
             throw new ArrayIndexOutOfBoundsException("Please be more careful, we do't have such item : " + indexToChange);
-        else
+        else {
             updateSpaceItems(indexToChange);
+        }
     }
 
     /**
@@ -665,19 +911,53 @@ public class SpaceNavigationView extends RelativeLayout {
      */
     public void showBadgeAtIndex(int itemIndex, int badgeText, @ColorInt int badgeColor) {
         if (itemIndex < 0 || itemIndex > spaceItems.size()) {
-            throw new ArrayIndexOutOfBoundsException("Your item index can't be 0 or greater than space item size," +
-                    " your items size is " + spaceItems.size() + ", your current index is :" + itemIndex);
+            throwArrayIndexOutOfBoundsException(itemIndex);
         } else {
             RelativeLayout badgeView = badgeList.get(itemIndex);
 
             /**
              * Set circle background to badge view
              */
-            badgeView.setBackground(BadgeHelper.makeShapeDrawable(badgeColor));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                badgeView.setBackground(BadgeHelper.makeShapeDrawable(badgeColor));
+            } else {
+                badgeView.setBackgroundDrawable(BadgeHelper.makeShapeDrawable(badgeColor));
+            }
 
             BadgeItem badgeItem = new BadgeItem(itemIndex, badgeText, badgeColor);
-            BadgeHelper.showBadge(badgeView, badgeItem);
+            BadgeHelper.showBadge(badgeView, badgeItem, shouldShowBadgeWithNinePlus);
             badgeSaveInstanceHashMap.put(itemIndex, badgeItem);
+        }
+    }
+
+    /**
+     * Restore translation height from saveInstance
+     */
+    @SuppressWarnings("unchecked")
+    private void restoreTranslation() {
+        Bundle restoredBundle = savedInstanceState;
+
+        if (restoredBundle != null) {
+            if (restoredBundle.containsKey(VISIBILITY)) {
+                this.setTranslationY(restoredBundle.getFloat(VISIBILITY));
+            }
+
+        }
+    }
+
+    /**
+     * Hide badge at index
+     *
+     * @param index badge index
+     * @deprecated Use {@link #hideBadgeAtIndex(int index)} instead.
+     */
+    @Deprecated
+    public void hideBudgeAtIndex(final int index) {
+        if (badgeList.get(index).getVisibility() == GONE) {
+            Log.d(TAG, "Badge at index: " + index + " already hidden");
+        } else {
+            BadgeHelper.hideBadge(badgeList.get(index));
+            badgeSaveInstanceHashMap.remove(index);
         }
     }
 
@@ -686,9 +966,9 @@ public class SpaceNavigationView extends RelativeLayout {
      *
      * @param index badge index
      */
-    public void hideBudgeAtIndex(final int index) {
+    public void hideBadgeAtIndex(final int index) {
         if (badgeList.get(index).getVisibility() == GONE) {
-            Log.d(TAG, "Budge at index: " + index + " already hidden");
+            Log.d(TAG, "Badge at index: " + index + " already hidden");
         } else {
             BadgeHelper.hideBadge(badgeList.get(index));
             badgeSaveInstanceHashMap.remove(index);
@@ -697,8 +977,21 @@ public class SpaceNavigationView extends RelativeLayout {
 
     /**
      * Hiding all available badges
+     * @deprecated Use {@link #hideAllBadges()} instead.
      */
+    @Deprecated
     public void hideAllBudges() {
+        for (RelativeLayout badge : badgeList) {
+            if (badge.getVisibility() == VISIBLE)
+                BadgeHelper.hideBadge(badge);
+        }
+        badgeSaveInstanceHashMap.clear();
+    }
+
+    /**
+     * Hiding all available badges
+     */
+    public void hideAllBadges() {
         for (RelativeLayout badge : badgeList) {
             if (badge.getVisibility() == VISIBLE)
                 BadgeHelper.hideBadge(badge);
@@ -717,7 +1010,10 @@ public class SpaceNavigationView extends RelativeLayout {
                 (((BadgeItem) badgeSaveInstanceHashMap.get(badgeIndex)).getIntBadgeText() != badgeText)) {
             BadgeItem currentBadgeItem = (BadgeItem) badgeSaveInstanceHashMap.get(badgeIndex);
             BadgeItem badgeItemForSave = new BadgeItem(badgeIndex, badgeText, currentBadgeItem.getBadgeColor());
-            BadgeHelper.forceShowBadge(badgeList.get(badgeIndex), badgeItemForSave);
+            BadgeHelper.forceShowBadge(
+                    badgeList.get(badgeIndex),
+                    badgeItemForSave,
+                    shouldShowBadgeWithNinePlus);
             badgeSaveInstanceHashMap.put(badgeIndex, badgeItemForSave);
         }
     }
@@ -730,5 +1026,106 @@ public class SpaceNavigationView extends RelativeLayout {
     public void setFont(Typeface customFont) {
         isCustomFont = true;
         this.customFont = customFont;
+    }
+
+    public void setCentreButtonIconColorFilterEnabled(boolean enabled) {
+        isCentreButtonIconColorFilterEnabled = enabled;
+    }
+
+    /**
+     * Change centre button icon if space navigation already set up
+     *
+     * @param icon Target icon to change
+     */
+    public void changeCenterButtonIcon(int icon) {
+        if (centreButton == null) {
+            Log.e(TAG, "You should call setCentreButtonIcon() instead, " +
+                    "changeCenterButtonIcon works if space navigation already set up");
+        } else {
+            centreButton.setImageResource(icon);
+            centreButtonIcon = icon;
+        }
+    }
+
+    /**
+     * Change item icon if space navigation already set up
+     *
+     * @param itemIndex Target position
+     * @param newIcon   Icon to change
+     */
+    public void changeItemIconAtPosition(int itemIndex, int newIcon) {
+        if (itemIndex < 0 || itemIndex > spaceItems.size()) {
+            throwArrayIndexOutOfBoundsException(itemIndex);
+        } else {
+            SpaceItem spaceItem = spaceItems.get(itemIndex);
+            RelativeLayout textAndIconContainer = (RelativeLayout) spaceItemList.get(itemIndex);
+            ImageView spaceItemIcon = (ImageView) textAndIconContainer.findViewById(R.id.space_icon);
+            spaceItemIcon.setImageResource(newIcon);
+            spaceItem.setItemIcon(newIcon);
+            changedItemAndIconHashMap.put(itemIndex, spaceItem);
+        }
+    }
+
+    /**
+     * Change item text if space navigation already set up
+     *
+     * @param itemIndex Target position
+     * @param newText   Text to change
+     */
+    public void changeItemTextAtPosition(int itemIndex, String newText) {
+        if (itemIndex < 0 || itemIndex > spaceItems.size()) {
+            throwArrayIndexOutOfBoundsException(itemIndex);
+        } else {
+            SpaceItem spaceItem = spaceItems.get(itemIndex);
+            RelativeLayout textAndIconContainer = (RelativeLayout) spaceItemList.get(itemIndex);
+            TextView spaceItemIcon = (TextView) textAndIconContainer.findViewById(R.id.space_text);
+            spaceItemIcon.setText(newText);
+            spaceItem.setItemName(newText);
+            changedItemAndIconHashMap.put(itemIndex, spaceItem);
+        }
+    }
+
+    /**
+     * Change space background color if space view already set up
+     *
+     * @param color Target color to change
+     */
+    public void changeSpaceBackgroundColor(@ColorInt int color) {
+        if (color == spaceBackgroundColor) {
+            Log.d(TAG, "changeSpaceBackgroundColor: color already changed");
+            return;
+        }
+
+        spaceBackgroundColor = color;
+        setBackgroundColors();
+        centreContent.changeBackgroundColor(color);
+    }
+
+
+    /**
+     * If you want to show full badge text or show 9+
+     *
+     * @param shouldShowBadgeWithNinePlus false for full text
+     */
+    public void shouldShowFullBadgeText(boolean shouldShowBadgeWithNinePlus) {
+        this.shouldShowBadgeWithNinePlus = shouldShowBadgeWithNinePlus;
+    }
+
+    /**
+     * set active centre button color
+     *
+     * @param color target color
+     */
+    public void setActiveCentreButtonIconColor(@ColorInt int color) {
+        activeCentreButtonIconColor = color;
+    }
+
+    /**
+     * set inactive centre button color
+     *
+     * @param color target color
+     */
+    public void setInActiveCentreButtonIconColor(@ColorInt int color) {
+        inActiveCentreButtonIconColor = color;
     }
 }

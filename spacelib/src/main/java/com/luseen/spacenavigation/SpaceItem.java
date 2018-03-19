@@ -16,11 +16,9 @@
  */
 package com.luseen.spacenavigation;
 
-/**
- * Created by Chatikyan on 13.08.2016-21:10.
- */
+import java.io.Serializable;
 
-public class SpaceItem {
+public class SpaceItem implements Serializable {
 
     private String itemName;
 
@@ -31,19 +29,19 @@ public class SpaceItem {
         this.itemIcon = itemIcon;
     }
 
-    public String getItemName() {
+    String getItemName() {
         return itemName;
     }
 
-    public void setItemName(String itemName) {
+    void setItemName(String itemName) {
         this.itemName = itemName;
     }
 
-    public int getItemIcon() {
+    int getItemIcon() {
         return itemIcon;
     }
 
-    public void setItemIcon(int itemIcon) {
+    void setItemIcon(int itemIcon) {
         this.itemIcon = itemIcon;
     }
 }

@@ -18,14 +18,12 @@ package com.luseen.spacenavigation;
 
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
+import android.os.Build;
 import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewPropertyAnimatorListenerAdapter;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
-/**
- * Created by Chatikyan on 17.08.2016-18:41.
- */
 
 class BadgeHelper {
 
@@ -35,11 +33,14 @@ class BadgeHelper {
      * @param view      target badge
      * @param badgeItem BadgeItem object
      */
-    static void showBadge(RelativeLayout view, BadgeItem badgeItem) {
+    static void showBadge(RelativeLayout view, BadgeItem badgeItem, boolean shouldShowBadgeWithNinePlus) {
 
         Utils.changeViewVisibilityVisible(view);
         TextView badgeTextView = (TextView) view.findViewById(R.id.badge_text_view);
-        badgeTextView.setText(badgeItem.getBadgeText());
+        if (shouldShowBadgeWithNinePlus)
+            badgeTextView.setText(badgeItem.getBadgeText());
+        else
+            badgeTextView.setText(badgeItem.getFullBadgeText());
 
         view.setScaleX(0);
         view.setScaleY(0);
@@ -48,7 +49,7 @@ class BadgeHelper {
                 .setDuration(200)
                 .scaleX(1)
                 .scaleY(1)
-                .setListener(new SimpleViewAnimatorListener() {
+                .setListener(new ViewPropertyAnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(View view) {
                         Utils.changeViewVisibilityVisible(view);
@@ -67,7 +68,7 @@ class BadgeHelper {
                 .setDuration(200)
                 .scaleX(0)
                 .scaleY(0)
-                .setListener(new SimpleViewAnimatorListener() {
+                .setListener(new ViewPropertyAnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(final View view) {
                         Utils.changeViewVisibilityGone(view);
@@ -82,11 +83,18 @@ class BadgeHelper {
      * @param view      target budge
      * @param badgeItem BadgeItem object
      */
-    static void forceShowBadge(RelativeLayout view, BadgeItem badgeItem) {
+    static void forceShowBadge(RelativeLayout view, BadgeItem badgeItem, boolean shouldShowBadgeWithNinePlus) {
         Utils.changeViewVisibilityVisible(view);
-        view.setBackground(makeShapeDrawable(badgeItem.getBadgeColor()));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            view.setBackground(makeShapeDrawable(badgeItem.getBadgeColor()));
+        } else {
+            view.setBackgroundDrawable(makeShapeDrawable(badgeItem.getBadgeColor()));
+        }
         TextView badgeTextView = (TextView) view.findViewById(R.id.badge_text_view);
-        badgeTextView.setText(badgeItem.getBadgeText());
+        if (shouldShowBadgeWithNinePlus)
+            badgeTextView.setText(badgeItem.getBadgeText());
+        else
+            badgeTextView.setText(badgeItem.getFullBadgeText());
     }
 
     /**
